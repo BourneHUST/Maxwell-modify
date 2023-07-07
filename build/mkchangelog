@@ -1,0 +1,36 @@
+#!/usr/bin/env ruby
+
+require 'bundler/setup'
+require 'octokit'
+
+client = Octokit::Client.new(:netrc => true)
+
+puts "# Maxwell changelog"
+puts
+
+page = 1
+releases = client.releases('zendesk/maxwell', page: page)
+
+while releases.any?
+  releases.each do |r|
+    prerelease = !!(r[:tag_name] =~ /-\w+$/)
+    next if prerelease && r[:body].strip.empty?
+    out = <<-EOL
+### [%{tag_name}](%{html_url})
+
+%{body}
+
+_Released %{date}_
+    EOL
+
+    r[:body].gsub!(/\r\n/, "\n")
+    r[:date] = r[:created_at].to_s.split(' ').first
+    puts out.strip % r
+    puts
+  end
+
+  page = page + 1
+  releases = client.releases('zendesk/maxwell', page: page)
+end
+
+
